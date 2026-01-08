@@ -10,7 +10,26 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Email required' });
   }
 
-  // TODO: Check database for active subscription
-  // For now, return false
-  return res.json({ active: false, email });
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/subscribers?email=eq.${email}&status=eq.active`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      }
+    );
+
+    const subscribers = await response.json();
+    const active = subscribers && subscribers.length > 0;
+
+    return res.json({ active, email });
+  } catch (error) {
+    console.error('Check subscription error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 }
