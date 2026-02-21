@@ -33,7 +33,13 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates'
         },
-        body: JSON.stringify({ email, subscription_id, status, product_permalink })
+        body: JSON.stringify({ 
+          email, 
+          gumroad_subscription_id: subscription_id, 
+          status, 
+          product_permalink,
+          subscribed_at: new Date().toISOString()
+        })
       }
     );
 
