@@ -1,20 +1,17 @@
-// This receives webhooks from Gumroad
 export default async function handler(req, res) {
-  // Add CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // Handle preflight
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-  
-  if (req.method !== 'GET') {
+
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { email } = req.query;
+  const { email, product_permalink, subscription_id, cancelled } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: 'Email required' });
@@ -24,22 +21,30 @@ export default async function handler(req, res) {
   const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
   try {
+    const status = cancelled ? 'cancelled' : 'active';
+
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/subscribers?email=eq.${email}&status=eq.active`,
+      `${SUPABASE_URL}/rest/v1/subscribers`,
       {
+        method: 'POST',
         headers: {
           'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`
-        }
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({ email, subscription_id, status, product_permalink })
       }
     );
 
-    const subscribers = await response.json();
-    const active = subscribers && subscribers.length > 0;
+    if (!response.ok) {
+      throw new Error(`Supabase error: ${response.status}`);
+    }
 
-    return res.json({ active, email });
+    return res.status(200).json({ success: true });
+
   } catch (error) {
-    console.error('Check subscription error:', error);
+    console.error('Webhook error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
