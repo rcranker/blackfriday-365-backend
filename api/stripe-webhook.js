@@ -1,6 +1,6 @@
 export const config = {
   api: {
-    bodyParser: false, // Required for Stripe signature verification
+    bodyParser: false,
   },
 };
 
@@ -35,7 +35,6 @@ export default async function handler(req, res) {
     const rawBody = await getRawBody(req);
     const signature = req.headers['stripe-signature'];
 
-    // Verify webhook signature
     const { createHmac } = await import('crypto');
     const elements = signature.split(',');
     const timestamp = elements.find(e => e.startsWith('t=')).slice(2);
@@ -66,7 +65,6 @@ export default async function handler(req, res) {
       const subscription = event.data.object;
       const customerId = subscription.customer || event.data.object.customer;
       
-      // Get customer email from Stripe
       const customerRes = await fetch(
         `https://api.stripe.com/v1/customers/${customerId}`,
         {
@@ -83,7 +81,6 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true });
       }
 
-      // Upsert subscriber in Supabase
       await fetch(`${SUPABASE_URL}/rest/v1/subscribers`, {
         method: 'POST',
         headers: SUPABASE_HEADERS,
@@ -106,7 +103,6 @@ export default async function handler(req, res) {
       const subscription = event.data.object;
       const customerId = subscription.customer;
 
-      // Get customer email
       const customerRes = await fetch(
         `https://api.stripe.com/v1/customers/${customerId}`,
         {
@@ -119,7 +115,6 @@ export default async function handler(req, res) {
       const email = customer.email;
 
       if (email) {
-        // Mark as cancelled in Supabase
         await fetch(
           `${SUPABASE_URL}/rest/v1/subscribers?email=eq.${encodeURIComponent(email)}`,
           {
@@ -142,13 +137,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
-```
-
-Save the file.
-
-**Step 8: Set Up Stripe Webhook in Stripe Dashboard**
-1. In Stripe dashboard go to **Developers → Webhooks**
-2. Click **Add endpoint**
-3. Enter your endpoint URL:
-```
-   https://blackfriday-365-backend.vercel.app/api/stripe-webhook
